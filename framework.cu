@@ -1,16 +1,39 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
+#include <cmath>
+
+#include <vector>
+#include <string_view>
+#include <charconv>
+#include <stdexcept>
+#include <system_error>
+
 #include <cuda_runtime.h>
 
-#include <cmath>
 
 
 
 // galaxy is stored as cartesian coordinates of its stars, each dimmension is in separate array
-struct sGalaxy {
+struct sGalaxy
+{
     float* x;
     float* y;
     float* z;
+};
+
+
+class cuda_exception : public std::exception
+{
+    std::string_view msg;
+
+public:
+    explicit cuda_exception(std::string_view msg_) : msg(msg_) {}
+
+    const char* what() const override
+    {
+        return msg.data();
+    }
 };
 
 
@@ -21,7 +44,7 @@ struct sGalaxy {
 
 
 // the size of the gallaxy can be arbitrary changed
-#define N 50000
+#define N 2000 // [todo] use as command line parameter
 // #define N 10
 
 
@@ -48,21 +71,105 @@ void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
 }
 
 
-int main(int argc, char **argv)
+int main_exc(int argc, char** argv)
 {
+    // params
     int device = 0;
-    bool run_cpu = true; // [todo] command line options
+
+    bool run_cpu = true;
     bool run_gpu = true;
 
-    // parse command line
-    if (argc == 2) {
-        device = atoi(argv[1]);
+    bool seed_time = false;
+    bool seed_number = false;
+    unsigned int seed = 314159;
+
+    // parse command line params
+    std::vector<std::string_view> args(argv + 1, argv + argc);
+
+    bool old_args_style = false;
+    if (args.size() == 1) {
+        // for compatibility with original framework
+        std::string_view device_str = args[0];
+
+        unsigned int device_try = 0;
+        const char* device_str_last = device_str.data() + device_str.size();
+        auto [ptr, err] = std::from_chars(device_str.data(), device_str_last, device_try);
+
+        if (ptr == device_str_last && err == std::errc()) {
+            device = device_try;
+            old_args_style = true;
+        }
+    }
+
+    if (!old_args_style) {
+        auto args_it = args.begin();
+
+        while (args_it != args.end()) {
+            std::string_view arg = *args_it;
+            args_it++;
+
+            if (arg == "-c" || arg == "--cpu") {
+                run_cpu = true;
+            } else if (arg == "-g" || arg == "--gpu") {
+                run_gpu = true;
+            } else if (arg == "-nc" || arg == "--no-cpu") {
+                run_cpu = false;
+            } else if (arg == "-ng" || arg == "--no-gpu") {
+                run_gpu = false;
+            } else if (arg == "-t" || arg == "--seed-time") {
+                seed_time = true;
+            } else if (arg == "-n" || arg == "--seed-number") {
+                seed_number = true;
+
+                if (args_it == args.end()) {
+                    throw std::invalid_argument("-n / --seed-number > unsigned int expected");
+                }
+                std::string_view seed_str = *args_it;
+                args_it++;
+
+                unsigned int seed_try = 0;
+                const char* seed_str_last = seed_str.data() + seed_str.size();
+                auto [ptr, err] = std::from_chars(seed_str.data(), seed_str_last, seed_try);
+
+                if (ptr != seed_str_last || err != std::errc()) {
+                    throw std::invalid_argument("-n / --seed-number > unsigned int expected");
+                }
+
+                seed = seed_try;
+            } else if (arg == "-d" || arg == "--device") {
+                if (args_it == args.end()) {
+                    throw std::invalid_argument("-d / --device > int expected");
+                }
+                std::string_view device_str = *args_it;
+                args_it++;
+
+                unsigned int device_try = 0;
+                const char* device_str_last = device_str.data() + device_str.size();
+                auto [ptr, err] = std::from_chars(device_str.data(), device_str_last, device_try);
+
+                if (ptr != device_str_last || err != std::errc()) {
+                    throw std::invalid_argument("-d / --device > int expected");
+                }
+
+                device = device_try;
+            } else {
+                throw std::invalid_argument("unknown argument");
+            }
+        }
+    }
+
+    // setup seed
+    if (seed_time) {
+        srand(time(NULL));
+    }
+
+    if (seed_number) {
+        srand(seed);
     }
 
     // setup device
     if (cudaSetDevice(device) != cudaSuccess) {
-        fprintf(stderr, "Cannot set CUDA device!\n");
-        exit(1);
+        throw cuda_exception("cannot set CUDA device");
     }
 
     cudaDeviceProp deviceProp;
@@ -178,3 +285,14 @@ cleanup:
     return 0;
 }
 
+
+int main(int argc, char** argv)
+{
+    try {
+        main_exc(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << "ERROR: " << e.what() << "\n";
+    } catch (...) {
+        std::cerr << "ERROR: unknown exception\n";
+    }
+}

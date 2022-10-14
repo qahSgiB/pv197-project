@@ -1,16 +1,17 @@
 param (
     [Alias("b")][switch]$build,
     [Alias("r")][switch]$run,
-    [Alias("br")][switch]$all
+    [Alias("br")][switch]$all,
+    [Alias("a")][string]$runArgs
 )
 
 $buildDir = "build"
 $exePath = Join-Path $buildDir "framework.exe"
 
 if ($build -or $all) {
-    nvcc -O3 -use_fast_math -o $exePath .\framework.cu
+    nvcc -std=c++17 -O3 -use_fast_math -o $exePath .\framework.cu
 }
 
 if ($run -or $all) {
-    .$exePath
+    Invoke-Expression "$exePath $runArgs" # [todo]
 }
