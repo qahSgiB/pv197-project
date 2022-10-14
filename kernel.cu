@@ -104,8 +104,6 @@ float solveGPU(sGalaxy A, sGalaxy B, int n) {
 
     cudaMemcpyFromSymbol(&diff, total_diff, sizeof(float));
 
-    std::cout << "teeeeeeeeeeeeeeeest " << diff << "\n";
-
     float nf = n;
     diff = std::sqrt(diff / (nf * (nf - 1)));
 
