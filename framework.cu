@@ -14,7 +14,7 @@ struct sGalaxy {
 #include "kernel_CPU.C"
 
 // the size of the gallaxy can be arbitrary changed
-#define N 50000
+#define N 2000
 
 void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
 	for (int i = 0; i < n; i++) {
@@ -38,7 +38,7 @@ void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
 }
 
 int main(int argc, char **argv){
-	printf("using origina framework\n\n");
+	printf("using original framework\n\n");
 
 	sGalaxy A, B;
 	A.x = A.y = A.z = B.x = B.y = B.z = NULL;

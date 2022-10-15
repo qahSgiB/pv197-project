@@ -92,7 +92,6 @@ float solveGPU(sGalaxy A, sGalaxy B, int n) {
     std::cout << "grid size : " << grid_dim_x << " x " << grid_dim_y << "\n";
     std::cout << "block size : " << block_dim_x << " x " << block_dim_y << "\n";
     std::cout << "k : " << k_x << " x " << k_y << "\n";
-    std::cout << "\n";
 
     dim3 grid_size(grid_dim_x, grid_dim_y);
     dim3 block_size(block_dim_x, block_dim_y);
@@ -108,6 +107,8 @@ float solveGPU(sGalaxy A, sGalaxy B, int n) {
 
     float nf = n;
     diff = std::sqrt(diff / (nf * (nf - 1)));
+
+    std::cout << "\n";
 
     return diff;
 }

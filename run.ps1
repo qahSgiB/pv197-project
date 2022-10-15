@@ -7,8 +7,8 @@ param (
 )
 
 $cppStd = $null
-
 $frameworkMainFile = "framework.cu"
+
 if ($frameworkVersion -eq "14") {
     $frameworkMainFile = "framework_14.cu"
     $cppStd = "c++14"
