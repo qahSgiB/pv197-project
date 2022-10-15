@@ -30,7 +30,7 @@ class cuda_exception : public std::exception
 public:
     explicit cuda_exception(const char* msg_) : msg(msg_) {}
 
-    const char* what() const override
+    const char* what() const noexcept override
     {
         return msg;
     }
