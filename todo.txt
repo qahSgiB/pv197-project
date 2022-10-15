@@ -1,1 +1,2 @@
 float sizes
+run.sh pass arguments to exe
