@@ -8,6 +8,7 @@
 #include <charconv>
 #include <stdexcept>
 #include <system_error>
+#include <optional>
 
 #include <cuda_runtime.h>
 
@@ -37,15 +38,19 @@ public:
 };
 
 
+template<typename T>
+class cuda_deleter
+{
+    void operator()(T* obj) const noexcept
+    {
+        cudaFree(obj);
+    }
+};
+
+
 
 #include "kernel.cu"
 #include "kernel_CPU.C"
-
-
-
-// the size of the gallaxy can be arbitrary changed
-#define N 2000 // [todo] use as command line parameter
-// #define N 10
 
 
 
@@ -71,6 +76,21 @@ void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
 }
 
 
+template<typename T>
+std::optional<T> str_to_num(std::string_view s)
+{
+    T value;
+    const char* s_last = s.data() + s.size();
+    auto [ptr, err] = std::from_chars(s.data(), s_last, value);
+
+    if (ptr != s_last || err != std::errc()) {
+        return std::nullopt;
+    }
+
+    return std::optional<T>(value);
+}
+
+
 int main_exc(int argc, char** argv)
 {
     std::cout << "using framework 17\n\n";
@@ -84,6 +104,8 @@ int main_exc(int argc, char** argv)
     bool seed_time = false;
     bool seed_number = false;
     unsigned int seed = 314159;
+
+    size_t stars_count = 2000;
 
     // parse command line params
     std::vector<std::string_view> args(argv + 1, argv + argc);
@@ -121,39 +143,45 @@ int main_exc(int argc, char** argv)
             } else if (arg == "-t" || arg == "--seed-time") {
                 seed_time = true;
             } else if (arg == "-n" || arg == "--seed-number") {
-                seed_number = true;
-
                 if (args_it == args.end()) {
-                    throw std::invalid_argument("-n / --seed-number > unsigned int expected");
+                    throw std::invalid_argument("-n / --seed-number > argument expected");
                 }
-                std::string_view seed_str = *args_it;
+
+                seed_number = true;
+                std::optional<unsigned int> seed_try = str_to_num<unsigned int>(*args_it);
                 args_it++;
 
-                unsigned int seed_try = 0;
-                const char* seed_str_last = seed_str.data() + seed_str.size();
-                auto [ptr, err] = std::from_chars(seed_str.data(), seed_str_last, seed_try);
-
-                if (ptr != seed_str_last || err != std::errc()) {
+                if (!seed_try.has_value()) {
                     throw std::invalid_argument("-n / --seed-number > unsigned int expected");
                 }
 
-                seed = seed_try;
+                seed = seed_try.value();
             } else if (arg == "-d" || arg == "--device") {
                 if (args_it == args.end()) {
-                    throw std::invalid_argument("-d / --device > int expected");
+                    throw std::invalid_argument("-d / --device > argument expected");
                 }
-                std::string_view device_str = *args_it;
+                
+                std::optional<int> device_try = str_to_num<int>(*args_it);
                 args_it++;
 
-                unsigned int device_try = 0;
-                const char* device_str_last = device_str.data() + device_str.size();
-                auto [ptr, err] = std::from_chars(device_str.data(), device_str_last, device_try);
-
-                if (ptr != device_str_last || err != std::errc()) {
+                if (!device_try.has_value()) {
                     throw std::invalid_argument("-d / --device > int expected");
                 }
 
-                device = device_try;
+                device = device_try.value();
+            } else if (arg == "-s" || arg == "--stars") {
+                if (args_it == args.end()) {
+                    throw std::invalid_argument("-s / --stars > argument expected");
+                }
+                
+                std::optional<long long> stars_count_try = str_to_num<long long>(*args_it);
+                args_it++;
+
+                if (!stars_count_try.has_value()) {
+                    throw std::invalid_argument("-s / --stars > long long expected");
+                }
+
+                stars_count = stars_count_try.value();
             } else {
                 throw std::invalid_argument("unknown argument");
             }
@@ -172,17 +200,18 @@ int main_exc(int argc, char** argv)
         throw cuda_exception("cannot set CUDA device");
     }
 
-    cudaDeviceProp deviceProp;
-    cudaGetDeviceProperties(&deviceProp, device);
+    cudaDeviceProp device_prop;
+    cudaGetDeviceProperties(&device_prop, device);
 
     std::cout << "        [using device]\n";
     std::cout << "index : " << device << "\n";
-    std::cout << "name : " << deviceProp.name << "\n";
+    std::cout << "name : " << device_prop.name << "\n";
     std::cout << "\n";
 
     // create events for timing
-    cudaEvent_t start, stop;
+    cudaEvent_t start;
     cudaEventCreate(&start);
+    cudaEvent_t stop;
     cudaEventCreate(&stop);
 
     sGalaxy A, B;
@@ -191,46 +220,47 @@ int main_exc(int argc, char** argv)
     dA.x = dA.y = dA.z = dB.x = dB.y = dB.z = NULL;
 
     // allocate and set host memory
-    A.x = (float*)malloc(N*sizeof(A.x[0]));
-    A.y = (float*)malloc(N*sizeof(A.y[0]));
-    A.z = (float*)malloc(N*sizeof(A.z[0]));
-    B.x = (float*)malloc(N*sizeof(B.x[0]));
-    B.y = (float*)malloc(N*sizeof(B.y[0]));
-    B.z = (float*)malloc(N*sizeof(B.z[0]));
-    generateGalaxies(A, B, N);      
+    A.x = (float*)malloc(stars_count*sizeof(A.x[0]));
+    A.y = (float*)malloc(stars_count*sizeof(A.y[0]));
+    A.z = (float*)malloc(stars_count*sizeof(A.z[0]));
+    B.x = (float*)malloc(stars_count*sizeof(B.x[0]));
+    B.y = (float*)malloc(stars_count*sizeof(B.y[0]));
+    B.z = (float*)malloc(stars_count*sizeof(B.z[0]));
+    generateGalaxies(A, B, stars_count);      
  
     // allocate and set device memory
-    if (cudaMalloc((void**)&dA.x, N*sizeof(dA.x[0])) != cudaSuccess
-    || cudaMalloc((void**)&dA.y, N*sizeof(dA.y[0])) != cudaSuccess
-    || cudaMalloc((void**)&dA.z, N*sizeof(dA.z[0])) != cudaSuccess
-    || cudaMalloc((void**)&dB.x, N*sizeof(dB.x[0])) != cudaSuccess
-    || cudaMalloc((void**)&dB.y, N*sizeof(dB.y[0])) != cudaSuccess
-    || cudaMalloc((void**)&dB.z, N*sizeof(dB.z[0])) != cudaSuccess) {
+    if (cudaMalloc((void**)&dA.x, stars_count*sizeof(dA.x[0])) != cudaSuccess
+    || cudaMalloc((void**)&dA.y, stars_count*sizeof(dA.y[0])) != cudaSuccess
+    || cudaMalloc((void**)&dA.z, stars_count*sizeof(dA.z[0])) != cudaSuccess
+    || cudaMalloc((void**)&dB.x, stars_count*sizeof(dB.x[0])) != cudaSuccess
+    || cudaMalloc((void**)&dB.y, stars_count*sizeof(dB.y[0])) != cudaSuccess
+    || cudaMalloc((void**)&dB.z, stars_count*sizeof(dB.z[0])) != cudaSuccess) {
         fprintf(stderr, "Device memory allocation error!\n");
         goto cleanup;
     }
-    cudaMemcpy(dA.x, A.x, N*sizeof(dA.x[0]), cudaMemcpyHostToDevice);
-    cudaMemcpy(dA.y, A.y, N*sizeof(dA.y[0]), cudaMemcpyHostToDevice);
-    cudaMemcpy(dA.z, A.z, N*sizeof(dA.z[0]), cudaMemcpyHostToDevice);
-    cudaMemcpy(dB.x, B.x, N*sizeof(dB.x[0]), cudaMemcpyHostToDevice);
-    cudaMemcpy(dB.y, B.y, N*sizeof(dB.y[0]), cudaMemcpyHostToDevice);
-    cudaMemcpy(dB.z, B.z, N*sizeof(dB.z[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dA.x, A.x, stars_count*sizeof(dA.x[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dA.y, A.y, stars_count*sizeof(dA.y[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dA.z, A.z, stars_count*sizeof(dA.z[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dB.x, B.x, stars_count*sizeof(dB.x[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dB.y, B.y, stars_count*sizeof(dB.y[0]), cudaMemcpyHostToDevice);
+    cudaMemcpy(dB.z, B.z, stars_count*sizeof(dB.z[0]), cudaMemcpyHostToDevice);
     
     float time;
-    float diff_CPU, diff_GPU;
+    float diff_cpu;
+    float diff_gpu;
 
     if (run_cpu) {
         std::cout << "        [CPU solve]\n";
 
         cudaEventRecord(start, 0);
-        diff_CPU = solveCPU(A, B, N);
+        diff_cpu = solveCPU(A, B, stars_count);
         cudaEventRecord(stop, 0);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&time, start, stop);
 
         std::cout << "    [result]\n";
-        std::cout << "CPU performance: " << static_cast<float>(N) * static_cast<float>(N - 1) / (2.0f * time * 1e3f) << " megapairs/s\n";
-        std::cout << "CPU result: " << diff_CPU << "\n";
+        std::cout << "CPU performance: " << static_cast<float>(stars_count) * static_cast<float>(stars_count - 1) / (2.0f * time * 1e3f) << " megapairs/s\n";
+        std::cout << "CPU result: " << diff_cpu << "\n";
         std::cout << "\n";
     }
 
@@ -241,7 +271,7 @@ int main_exc(int argc, char** argv)
 
         // run it 10x for more accurately timing results
         for (int i = 0; i < 10; i++) {
-            diff_GPU = solveGPU(dA, dB, N);
+            diff_gpu = solveGPU(dA, dB, stars_count);
         }
 
         cudaEventRecord(stop, 0);
@@ -249,18 +279,18 @@ int main_exc(int argc, char** argv)
         cudaEventElapsedTime(&time, start, stop);
 
         std::cout << "    [result]\n";
-        std::cout << "GPU performance: " << static_cast<float>(N) * static_cast<float>(N - 1) / (2.0f * time * 1e2f) << " megapairs/s\n";
-        std::cout << "GPU result: " << diff_GPU << "\n";
+        std::cout << "GPU performance: " << static_cast<float>(stars_count) * static_cast<float>(stars_count - 1) / (2.0f * time * 1e2f) << " megapairs/s\n";
+        std::cout << "GPU result: " << diff_gpu << "\n";
         std::cout << "\n";
     }
 
     if (run_cpu && run_gpu) {
         std::cout << "        [result check]\n";
-        std::cout << "CPU result: " << diff_CPU << "\n";
-        std::cout << "GPU result: " << diff_GPU << "\n";
+        std::cout << "CPU result: " << diff_cpu << "\n";
+        std::cout << "GPU result: " << diff_gpu << "\n";
 
         // check GPU results
-        if (std::abs((diff_CPU - diff_GPU) / ((diff_CPU + diff_GPU) / 2.0f)) < 0.01f) { // ???
+        if (std::abs((diff_cpu - diff_gpu) / ((diff_cpu + diff_gpu) / 2.0f)) < 0.01f) { // ???
             std::cout << "Test OK :)\n";
         } else {
             std::cout << "Test FAILED :(\n";
