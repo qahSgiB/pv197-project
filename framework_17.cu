@@ -212,6 +212,11 @@ public:
         n = n_try.value();
         return true;
     }
+
+    void throw_unknown_arg() const
+    {
+        throw std::invalid_argument(format_string("unknown argument - %s", get_arg().data()));
+    }
 };
 
 
@@ -240,7 +245,7 @@ int main_exc(int argc, char** argv)
     // parse command line params
     arg_parser ap(argc, argv);
 
-    if (ap.size() == 1 || !ap.load_num(device)) { // for compatibility with original framework
+    if (ap.size() != 1 || !ap.load_num(device)) { // for compatibility with original framework
         while (!ap.end()) {
             if (ap.load_arg_switch(run_cpu, "-c", "--cpu")) { continue; }
             if (ap.load_arg_switch(run_gpu, "-g", "--gpu")) { continue; }
@@ -255,7 +260,7 @@ int main_exc(int argc, char** argv)
             if (ap.load_arg_num(block_dim_x, "-bx", "--block-dim-x", "size_t")) { continue; }
             if (ap.load_arg_num(block_dim_y, "-by", "--block-dim-y", "size_t")) { continue; }
 
-            throw std::invalid_argument("unknown argument");
+            ap.throw_unknown_arg();
         }
     }
 
