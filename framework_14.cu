@@ -69,7 +69,7 @@ void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
 
 
 template<typename T>
-std::enable_if_t<std::is_signed_v<T>, bool> str_to_num(const char* s, T& value)
+std::enable_if_t<std::is_signed<T>::value, bool> str_to_num(const char* s, T& value)
 {
     char* s_last;
     long long value_ll = std::strtoll(s, &s_last, 10); // not optimized for smaller types
@@ -83,7 +83,7 @@ std::enable_if_t<std::is_signed_v<T>, bool> str_to_num(const char* s, T& value)
 }
 
 template<typename T>
-std::enable_if_t<std::is_unsigned_v<T>, bool> str_to_num(const char* s, T& value)
+std::enable_if_t<std::is_unsigned<T>::value, bool> str_to_num(const char* s, T& value)
 {
     char* s_last;
     unsigned long long value_ll = std::strtoull(s, &s_last, 10); // not optimized for smaller types
