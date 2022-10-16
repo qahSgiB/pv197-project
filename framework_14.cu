@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <memory>
+#include <limits>
 
 #include <cuda_runtime.h>
 

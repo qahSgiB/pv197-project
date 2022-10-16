@@ -10,6 +10,7 @@
 #include <system_error>
 #include <optional>
 #include <memory>
+#include <limits>
 
 #include <cuda_runtime.h>
 
