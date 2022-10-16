@@ -10,7 +10,8 @@ __device__ float total_diff = 0.0f;
 
 // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, b_y, k_total_diff);
 
-__global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n) {
+__global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
+{
     int gs_x = gridDim.x;
     int gs_y = gridDim.y;
     int bs_x = blockDim.x;
@@ -76,17 +77,10 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n) {
     atomicAdd(&total_diff, k_total_diff);
 }
 
-float solveGPU(sGalaxy A, sGalaxy B, int n) {
-    //TODO kernel call and data manipulation
 
-    // size_t grid_dim_x = 256;
-    // size_t grid_dim_y = 256;
-    size_t grid_dim_x = 64;
-    size_t grid_dim_y = 64;
 
-    size_t block_dim_x = 16;
-    size_t block_dim_y = 16;
-
+float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t grid_dim_y, size_t block_dim_x, size_t block_dim_y)
+{
     size_t k_x = (n - 1) / (grid_dim_x * block_dim_x) + 1; // round up
     size_t k_y = (n - 1) / (grid_dim_y * block_dim_y) + 1;
 
@@ -113,4 +107,10 @@ float solveGPU(sGalaxy A, sGalaxy B, int n) {
     std::cout << "\n";
 
     return diff;
+}
+
+float solveGPU(sGalaxy A, sGalaxy B, int n)
+{
+    //TODO kernel call and data manipulation
+    return solve_gpu_param(A, B, n, 64, 64, 16, 16);
 }
