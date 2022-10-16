@@ -79,8 +79,10 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n) {
 float solveGPU(sGalaxy A, sGalaxy B, int n) {
     //TODO kernel call and data manipulation
 
-    size_t grid_dim_x = 256;
-    size_t grid_dim_y = 256;
+    // size_t grid_dim_x = 256;
+    // size_t grid_dim_y = 256;
+    size_t grid_dim_x = 64;
+    size_t grid_dim_y = 64;
 
     size_t block_dim_x = 16;
     size_t block_dim_y = 16;
@@ -103,7 +105,7 @@ float solveGPU(sGalaxy A, sGalaxy B, int n) {
 
     cudaMemcpyFromSymbol(&diff, total_diff, sizeof(float));
 
-    // std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n";
+    std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n";
 
     float nf = n;
     diff = std::sqrt(diff / (nf * (nf - 1)));

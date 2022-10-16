@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <optional>
+#include <memory>
 
 #include <cuda_runtime.h>
 
@@ -90,6 +91,129 @@ std::optional<T> str_to_num(std::string_view s)
     return std::optional<T>(value);
 }
 
+template<typename ... Args>
+std::string format_string(std::string_view format, Args ... args)
+{
+    int size = snprintf(nullptr, 0, format.data(), args ...);
+    if (size < 0) {
+        throw std::runtime_error("formatting error");
+    }
+
+    std::unique_ptr<char[]> sc = std::make_unique<char[]>(size + 1);
+    int size_n = snprintf(sc.get(), size + 1, format.data(), args ...);
+    if (size_n < 0 || size_n > size) {
+        throw std::runtime_error("formatting error");
+    }
+
+    return std::string(sc.get()); // [todo] unnecessary char[] copying - use something like string + reserve / stringstream
+}
+
+
+
+class arg_parser
+{
+    std::vector<std::string_view> args;
+    std::vector<std::string_view>::iterator args_it;
+
+    void end_throw(std::string_view msg) const
+    {
+        if (end()) {
+            throw std::invalid_argument(msg.data());
+        }
+    }
+
+    void next()
+    {
+        args_it++;
+    }
+
+    std::string_view get_arg() const
+    {
+        return *args_it;
+    }
+
+    std::string_view get_arg_next()
+    {
+        return *(args_it++);
+    }
+
+    bool parse_arg(std::string_view short_s, std::string_view long_s)
+    {
+        std::string_view arg = get_arg();
+        if (arg != short_s && arg != long_s) {
+            return false;
+        }
+
+        next();
+        return true;
+    }
+
+public:
+    bool end() const
+    {
+        return args_it == args.end();
+    }
+
+    size_t size() const
+    {
+        return args.size();
+    }
+
+    arg_parser(int argc, char** argv) : args(argv + 1, argv + argc)
+    {
+        args_it = args.begin();
+    }
+
+    bool load_arg_switch(bool& b, std::string_view short_s, std::string_view long_s, bool b_value = true)
+    {
+        end_throw("unexpected end of arguments");
+
+        if (!parse_arg(short_s, long_s)) {
+            return false;
+        }
+
+        b = b_value;
+        return true;
+    }
+
+    template<typename T>
+    bool load_num(T& n)
+    {
+        end_throw("unexpected end of arguments");
+
+        std::optional<T> n_try = str_to_num<T>(get_arg());
+        if (!n_try.has_value()) {
+            return false;
+        }
+
+        next();
+        n = n_try.value();
+        return true;
+    }
+
+    template<typename T>
+    bool load_arg_num(T& n, std::string_view short_s, std::string_view long_s, std::optional<std::string_view> type_str_o = std::nullopt)
+    {
+        end_throw("unexpected end of arguments");
+
+        if (!parse_arg(short_s, long_s)) {
+            return false;
+        }
+
+        std::string arg_error_msg = format_string("%s / %s > %s argument expected", short_s.data(), long_s.data(), type_str_o.value_or("numerical").data());
+        end_throw(arg_error_msg);
+
+        std::optional<T> n_try = str_to_num<T>(get_arg_next());
+        if (!n_try.has_value()) {
+            throw std::invalid_argument(arg_error_msg);
+        }
+
+        n = n_try.value();
+        return true;
+    }
+};
+
+
 
 int main_exc(int argc, char** argv)
 {
@@ -108,83 +232,20 @@ int main_exc(int argc, char** argv)
     size_t stars_count = 2000;
 
     // parse command line params
-    std::vector<std::string_view> args(argv + 1, argv + argc);
+    arg_parser ap(argc, argv);
 
-    bool old_args_style = false;
-    if (args.size() == 1) {
-        // for compatibility with original framework
-        std::string_view device_str = args[0];
+    if (ap.size() == 1 || !ap.load_num(device)) { // for compatibility with original framework
+        while (!ap.end()) {
+            if (ap.load_arg_switch(run_cpu, "-c", "--cpu")) { continue; }
+            if (ap.load_arg_switch(run_gpu, "-g", "--gpu")) { continue; }
+            if (ap.load_arg_switch(run_cpu, "-nc", "--no-cpu", false)) { continue; }
+            if (ap.load_arg_switch(run_gpu, "-ng", "--no-gpu", false)) { continue; }
+            if (ap.load_arg_switch(seed_time, "-t", "--seed-time")) { continue; }
+            if (ap.load_arg_num(seed, "-n", "--seed-number", "unsigned int")) { seed_number = true; continue; }
+            if (ap.load_arg_num(device, "-d", "--device", "int")) { continue; }
+            if (ap.load_arg_num(stars_count, "-s", "--stars", "long long")) { continue; }
 
-        unsigned int device_try = 0;
-        const char* device_str_last = device_str.data() + device_str.size();
-        auto [ptr, err] = std::from_chars(device_str.data(), device_str_last, device_try);
-
-        if (ptr == device_str_last && err == std::errc()) {
-            device = device_try;
-            old_args_style = true;
-        }
-    }
-
-    if (!old_args_style) {
-        auto args_it = args.begin();
-
-        while (args_it != args.end()) {
-            std::string_view arg = *args_it;
-            args_it++;
-
-            if (arg == "-c" || arg == "--cpu") {
-                run_cpu = true;
-            } else if (arg == "-g" || arg == "--gpu") {
-                run_gpu = true;
-            } else if (arg == "-nc" || arg == "--no-cpu") {
-                run_cpu = false;
-            } else if (arg == "-ng" || arg == "--no-gpu") {
-                run_gpu = false;
-            } else if (arg == "-t" || arg == "--seed-time") {
-                seed_time = true;
-            } else if (arg == "-n" || arg == "--seed-number") {
-                if (args_it == args.end()) {
-                    throw std::invalid_argument("-n / --seed-number > argument expected");
-                }
-
-                seed_number = true;
-                std::optional<unsigned int> seed_try = str_to_num<unsigned int>(*args_it);
-                args_it++;
-
-                if (!seed_try.has_value()) {
-                    throw std::invalid_argument("-n / --seed-number > unsigned int expected");
-                }
-
-                seed = seed_try.value();
-            } else if (arg == "-d" || arg == "--device") {
-                if (args_it == args.end()) {
-                    throw std::invalid_argument("-d / --device > argument expected");
-                }
-                
-                std::optional<int> device_try = str_to_num<int>(*args_it);
-                args_it++;
-
-                if (!device_try.has_value()) {
-                    throw std::invalid_argument("-d / --device > int expected");
-                }
-
-                device = device_try.value();
-            } else if (arg == "-s" || arg == "--stars") {
-                if (args_it == args.end()) {
-                    throw std::invalid_argument("-s / --stars > argument expected");
-                }
-                
-                std::optional<long long> stars_count_try = str_to_num<long long>(*args_it);
-                args_it++;
-
-                if (!stars_count_try.has_value()) {
-                    throw std::invalid_argument("-s / --stars > long long expected");
-                }
-
-                stars_count = stars_count_try.value();
-            } else {
-                throw std::invalid_argument("unknown argument");
-            }
+            throw std::invalid_argument("unknown argument");
         }
     }
 
