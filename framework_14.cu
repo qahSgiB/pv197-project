@@ -233,6 +233,11 @@ int main_exc(int argc, char** argv)
 
     size_t stars_count = 2000;
 
+    size_t grid_dim_x = 64;
+    size_t grid_dim_y = 64;
+    size_t block_dim_x = 16;
+    size_t block_dim_y = 16;
+
     // parse command line params
     arg_parser ap(argc, argv);
 
@@ -246,6 +251,10 @@ int main_exc(int argc, char** argv)
             if (ap.load_arg_num(seed, "-n", "--seed-number", "unsigned int")) { seed_number = true; continue; }
             if (ap.load_arg_num(device, "-d", "--device", "int")) { continue; }
             if (ap.load_arg_num(stars_count, "-s", "--stars", "long long")) { continue; }
+            if (ap.load_arg_num(grid_dim_x, "-gx", "--grid-dim-x", "size_t")) { continue; }
+            if (ap.load_arg_num(grid_dim_y, "-gy", "--grid-dim-y-", "size_t")) { continue; }
+            if (ap.load_arg_num(block_dim_x, "-bx", "--block-dim-x", "size_t")) { continue; }
+            if (ap.load_arg_num(block_dim_y, "-by", "--block-dim-y", "size_t")) { continue; }
 
             throw std::invalid_argument("unknown argument");
         }
@@ -332,7 +341,7 @@ int main_exc(int argc, char** argv)
 
         // run it 10x for more accurately timing results
         for (int i = 0; i < 10; i++) {
-            diff_GPU = solveGPU(dA, dB, stars_count);
+            diff_GPU = solve_gpu_param(dA, dB, stars_count, grid_dim_x, grid_dim_y, block_dim_x, block_dim_y);
         }
 
         cudaEventRecord(stop, 0);
