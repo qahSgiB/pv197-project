@@ -29,7 +29,7 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
     int ks_x = (n - 1) / ts_x + 1; // [opt?] param
     int ks_y = (n - 1) / ts_y + 1;
 
-    // float nf = n;
+    float nf = n;
 
     float k_total_diff = 0.0f;
 
@@ -67,13 +67,16 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
 
                 float diff_b2 = dx * dx + dy * dy + dz * dz;
 
-                float diff = sqrtf(diff_a2) - sqrtf(diff_b2);
-                k_total_diff += diff * diff;
+                // float diff = __fsqrt_rz(diff_a2) - __fsqrt_rz(diff_b2);
+                // k_total_diff += diff * diff;
+                // k_total_diff += diff_a2 + diff_b2 - 2 * sqrtf(diff_a2 * diff_b2);
+                k_total_diff -= 2 * sqrtf(diff_a2 * diff_b2);
+                k_total_diff += diff_a2 + diff_b2;
             }
         }
     }
 
-    // k_total_diff /= nf * (nf - 1);
+    k_total_diff /= nf;
     atomicAdd(&total_diff, k_total_diff);
 }
 
@@ -102,7 +105,9 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
     std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n";
 
     float nf = n;
-    diff = std::sqrt(diff / (nf * (nf - 1)));
+    // diff = std::sqrt(diff / (nf * (nf - 1)));
+    // diff = std::sqrt(diff);
+    diff = std::sqrt(diff / (nf - 1));
 
     std::cout << "\n";
 

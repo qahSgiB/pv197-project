@@ -242,6 +242,8 @@ int main_exc(int argc, char** argv)
     size_t block_dim_x = 16;
     size_t block_dim_y = 16;
 
+    size_t gpu_repeat = 10;
+
     // parse command line params
     arg_parser ap(argc, argv);
 
@@ -259,6 +261,7 @@ int main_exc(int argc, char** argv)
             if (ap.load_arg_num(grid_dim_y, "-gy", "--grid-dim-y-", "size_t")) { continue; }
             if (ap.load_arg_num(block_dim_x, "-bx", "--block-dim-x", "size_t")) { continue; }
             if (ap.load_arg_num(block_dim_y, "-by", "--block-dim-y", "size_t")) { continue; }
+            if (ap.load_arg_num(gpu_repeat, "-gr", "--gpu-repeat", "size_t")) { continue; }
 
             ap.throw_unknown_arg();
         }
@@ -346,7 +349,7 @@ int main_exc(int argc, char** argv)
         cudaEventRecord(start, 0);
 
         // run it 10x for more accurately timing results
-        for (int i = 0; i < 10; i++) {
+        for (size_t i = 0; i < gpu_repeat; i++) {
             diff_gpu = solve_gpu_param(dA, dB, stars_count, grid_dim_x, grid_dim_y, block_dim_x, block_dim_y);
         }
 
