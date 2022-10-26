@@ -86,17 +86,17 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
 
 float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t grid_dim_y, size_t block_dim_x, size_t block_dim_y)
 {
-    size_t total_dim_x = grid_dim_x * block_dim_x;
-    size_t total_dim_y = grid_dim_y * block_dim_y;
+    // size_t total_dim_x = grid_dim_x * block_dim_x;
+    // size_t total_dim_y = grid_dim_y * block_dim_y;
 
-    size_t k_x = (n - 1) / total_dim_x + 1; // round up
-    size_t k_y = (n - 1) / total_dim_y + 1;
+    // size_t k_x = (n - 1) / total_dim_x + 1; // round up
+    // size_t k_y = (n - 1) / total_dim_y + 1;
 
-    std::cout << "    [kernel params]\n";
-    std::cout << "grid size : " << grid_dim_x << " x " << grid_dim_y << "\n";
-    std::cout << "block size : " << block_dim_x << " x " << block_dim_y << "\n";
-    std::cout << "k : " << k_x << " x " << k_y << "\n";
-    std::cout << "total size : " << total_dim_x * k_x << " x " << total_dim_y * k_y << "\n";
+    // std::cout << "    [kernel params]\n";
+    // std::cout << "grid size : " << grid_dim_x << " x " << grid_dim_y << "\n";
+    // std::cout << "block size : " << block_dim_x << " x " << block_dim_y << "\n";
+    // std::cout << "k : " << k_x << " x " << k_y << "\n";
+    // std::cout << "total size : " << total_dim_x * k_x << " x " << total_dim_y * k_y << "\n";
 
     dim3 grid_size(grid_dim_x, grid_dim_y);
     dim3 block_size(block_dim_x, block_dim_y);
@@ -108,14 +108,14 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 
     cudaMemcpyFromSymbol(&diff, total_diff, sizeof(float));
 
-    std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n";
+    // std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n";
 
     float nf = n;
     // diff = std::sqrt(diff / (nf * (nf - 1)));
     // diff = std::sqrt(diff);
     diff = std::sqrt(diff / (nf - 1));
 
-    std::cout << "\n";
+    // std::cout << "\n";
 
     return diff;
 }
