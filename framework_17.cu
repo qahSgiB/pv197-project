@@ -11,6 +11,7 @@
 #include <optional>
 #include <memory>
 #include <limits>
+#include <algorithm>
 
 #include <cuda_runtime.h>
 
@@ -177,10 +178,14 @@ public:
         return true;
     }
 
+    // tries loading number of type T
+    // no arg    | error
+    // no number | false
+    // success   | true
     template<typename T>
-    bool load_num(T& n)
+    bool load_num(T& n, std::optional<std::string_view> error_msg = std::nullopt)
     {
-        end_throw("unexpected end of arguments");
+        end_throw(error_msg.value_or("unexpected end of arguments"));
 
         std::optional<T> n_try = str_to_num<T>(get_arg());
         if (!n_try.has_value()) {
@@ -202,14 +207,44 @@ public:
         }
 
         std::string arg_error_msg = format_string("%s / %s > %s argument expected", short_s.data(), long_s.data(), type_str_o.value_or("numerical").data());
-        end_throw(arg_error_msg);
-
-        std::optional<T> n_try = str_to_num<T>(get_arg_next());
-        if (!n_try.has_value()) {
+        if (!load_num(n, arg_error_msg)) {
             throw std::invalid_argument(arg_error_msg);
         }
 
-        n = n_try.value();
+        return true;
+    }
+
+    template<typename enum_type, typename iterator>
+    bool load_arg_string_enum(enum_type& e, std::string_view short_s, std::string_view long_s, iterator options_first, iterator options_last, bool allow_index = false, std::optional<std::string_view> enum_options_str_o = std::nullopt)
+    {
+        end_throw("unexpected end of arguments");
+
+        if (!parse_arg(short_s, long_s)) {
+            return false;
+        }
+
+        std::string arg_error_msg = format_string("%s / %s > enum argument expected", short_s.data(), long_s.data());
+        if (enum_options_str_o.has_value()) {
+            arg_error_msg += format_string(" (valid options : %s)", enum_options_str_o.value().data());
+        }
+
+        if (allow_index) {
+            size_t e_index = 0;
+            if (load_num(e_index, arg_error_msg) && e_index < options_last - options_first) {
+                e = static_cast<enum_type>(e_index);
+                return true;
+            }
+        }
+
+        end_throw(arg_error_msg);
+
+        std::string_view arg = get_arg_next();
+        iterator arg_it = std::find(options_first, options_last, arg);
+        if (arg_it == options_last) {
+            throw std::invalid_argument(arg_error_msg);
+        }
+
+        e = static_cast<enum_type>(arg_it - options_first);
         return true;
     }
 
@@ -219,6 +254,9 @@ public:
     }
 };
 
+
+
+enum class gpu_output_type : size_t { DISABLE, ONCE, ENABLE };
 
 
 int main_exc(int argc, char** argv)
@@ -244,7 +282,11 @@ int main_exc(int argc, char** argv)
 
     size_t gpu_repeat = 10;
 
+    gpu_output_type gpu_output = gpu_output_type::ONCE;
+
     // parse command line params
+    std::vector<std::string> gpu_output_enum_str{"disable", "once", "enable"};
+
     arg_parser ap(argc, argv);
 
     if (ap.size() != 1 || !ap.load_num(device)) { // for compatibility with original framework
@@ -262,6 +304,7 @@ int main_exc(int argc, char** argv)
             if (ap.load_arg_num(block_dim_x, "-bx", "--block-dim-x", "size_t")) { continue; }
             if (ap.load_arg_num(block_dim_y, "-by", "--block-dim-y", "size_t")) { continue; }
             if (ap.load_arg_num(gpu_repeat, "-gr", "--gpu-repeat", "size_t")) { continue; }
+            if (ap.load_arg_string_enum(gpu_output, "-go", "--gpu-output", gpu_output_enum_str.cbegin(), gpu_output_enum_str.cend(), true, "disable, once, enable")) { continue; }
 
             ap.throw_unknown_arg();
         }
@@ -290,6 +333,7 @@ int main_exc(int argc, char** argv)
     // create events for timing
     cudaEvent_t start;
     cudaEventCreate(&start);
+
     cudaEvent_t stop;
     cudaEventCreate(&stop);
 
@@ -343,14 +387,20 @@ int main_exc(int argc, char** argv)
         std::cout << "\n";
     }
 
-    if (run_gpu) {
+    if (run_gpu && gpu_repeat > 0) {
         std::cout << "        [GPU solve]\n";
 
         cudaEventRecord(start, 0);
 
-        // run it 10x for more accurately timing results
+        if (gpu_output == gpu_output_type::ONCE) {
+            diff_gpu = solve_gpu_param(dA, dB, stars_count, grid_dim_x, grid_dim_y, block_dim_x, block_dim_y, true);
+            gpu_repeat -= 1;
+        }
+
+        bool gpu_output_b = gpu_output == gpu_output_type::ENABLE;
+
         for (size_t i = 0; i < gpu_repeat; i++) {
-            diff_gpu = solve_gpu_param(dA, dB, stars_count, grid_dim_x, grid_dim_y, block_dim_x, block_dim_y);
+            diff_gpu = solve_gpu_param(dA, dB, stars_count, grid_dim_x, grid_dim_y, block_dim_x, block_dim_y, gpu_output_b);
         }
 
         cudaEventRecord(stop, 0);
@@ -368,7 +418,6 @@ int main_exc(int argc, char** argv)
         std::cout << "CPU result: " << diff_cpu << "\n";
         std::cout << "GPU result: " << diff_gpu << "\n";
 
-        // check GPU results
         if (std::abs((diff_cpu - diff_gpu) / ((diff_cpu + diff_gpu) / 2.0f)) < 0.01f) { // ???
             std::cout << "Test OK :)\n";
         } else {
@@ -395,7 +444,7 @@ cleanup:
     if (B.y) free(B.y);
     if (B.z) free(B.z);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 

@@ -1,1 +1,4 @@
 float sizes
+
+    [non important]
+debug + non debug kernel versions (nevyzera to na nejaky rozdiel)
