@@ -33,8 +33,23 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
 
     float k_total_diff = 0.0f;
 
-    for (int k_y = 0; k_y < ks_y; k_y++) {
-        for (int k_x = 0; k_x < ks_x; k_x++) {
+    int bottom_left_x = g_x * bs_x;
+    int bottom_left_y = (g_y + 1) * bs_y - 1;
+
+    int ky_start = bottom_left_y > bottom_left_x ? 0 : (bottom_left_x - bottom_left_y) / ts_y + 1;
+
+    // if (b_x == 0 && b_y == 0) {
+    //     printf("[%d %d] [%d %d] ky_start = %d\n", g_x, g_y, b_x, b_y, ky_start);
+    // }
+
+    for (int k_y = ky_start; k_y < ks_y; k_y++) {
+        int kx_end = (bottom_left_y - bottom_left_x + k_y * ts_y - 1) / ts_x + 1;
+
+        // if (b_x == 0 && b_y == 0) {
+        //     printf("[%d %d] [%d %d] kx_end = %d\n", g_x, g_y, b_x, b_y, kx_end);
+        // }
+
+        for (int k_x = 0; k_x < kx_end; k_x++) {
             int galaxy0_index = k_x * ts_x + t_x;
             int galaxy1_index = k_y * ts_y + t_y;
 
