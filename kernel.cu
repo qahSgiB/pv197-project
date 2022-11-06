@@ -26,35 +26,28 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
     int t_x = g_x * bs_x + b_x;
     int t_y = g_y * bs_y + b_y;
 
-    int ks_x = (n - 1) / ts_x + 1; // [opt?] param
-    int ks_y = (n - 1) / ts_y + 1;
+    int ks_x = (n - 2) / ts_x + 1; // [opt?] param
+    int ks_y = (n - 2) / ts_y + 1;
 
     float nf = n;
 
     float k_total_diff = 0.0f;
 
-    int bottom_left_x = g_x * bs_x;
-    int bottom_left_y = (g_y + 1) * bs_y - 1;
+    int max_top_left_y = (ks_y - 1) * ts_y + bs_y * g_y;
+    int ky_end = max_top_left_y < n - 1 ? ks_y : ks_y - 1;
 
-    int ky_start = bottom_left_y > bottom_left_x ? 0 : (bottom_left_x - bottom_left_y) / ts_y + 1;
-
-    // if (b_x == 0 && b_y == 0) {
-    //     printf("[%d %d] [%d %d] ky_start = %d\n", g_x, g_y, b_x, b_y, ky_start);
-    // }
-
-    for (int k_y = ky_start; k_y < ks_y; k_y++) {
-        int kx_end = (bottom_left_y - bottom_left_x + k_y * ts_y - 1) / ts_x + 1;
-
-        // if (b_x == 0 && b_y == 0) {
-        //     printf("[%d %d] [%d %d] kx_end = %d\n", g_x, g_y, b_x, b_y, kx_end);
-        // }
+    for (int k_y = 0; k_y < ky_end; k_y++) {
+        // int kx_end = (bottom_left_y - bottom_left_x + k_y * ts_y - 1) / ts_x + 1;
+        int kx_end = ks_x;
 
         for (int k_x = 0; k_x < kx_end; k_x++) {
-            int galaxy0_index = k_x * ts_x + t_x;
-            int galaxy1_index = k_y * ts_y + t_y;
+            int x = k_x * ts_x + t_x;
+            int y = k_y * ts_y + t_y;
 
-            if (galaxy0_index < n && galaxy1_index < n && galaxy0_index < galaxy1_index) {
-            // if (galaxy0_index < n && galaxy1_index < n) {
+            if (x + y < n - 1) {
+                int galaxy0_index = x;
+                int galaxy1_index = n - y - 1;
+
                 float galaxy0a_x = galaxy_a.x[galaxy0_index];
                 float galaxy0a_y = galaxy_a.y[galaxy0_index];
                 float galaxy0a_z = galaxy_a.z[galaxy0_index];
@@ -104,8 +97,8 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
     size_t total_dim_x = grid_dim_x * block_dim_x;
     size_t total_dim_y = grid_dim_y * block_dim_y;
 
-    size_t k_x = (n - 1) / total_dim_x + 1; // round up
-    size_t k_y = (n - 1) / total_dim_y + 1;
+    size_t k_x = (n - 2) / total_dim_x + 1; // round up
+    size_t k_y = (n - 2) / total_dim_y + 1;
 
     if (enable_output) {
         std::cout << "    [kernel params]\n";
@@ -125,7 +118,7 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 
     cudaMemcpyFromSymbol(&diff, total_diff, sizeof(float));
 
-    if (enable_output) { std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n"; }
+    // if (enable_output) { std::cout << "teeeeeeeeeeeeeeeeeeeeest " << diff << "\n"; }
 
     float nf = n;
     // diff = std::sqrt(diff / (nf * (nf - 1)));
