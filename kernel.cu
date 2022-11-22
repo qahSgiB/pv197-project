@@ -33,20 +33,24 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
 
     float k_total_diff = 0.0f;
 
-    int max_top_left_y = (ks_y - 1) * ts_y + bs_y * g_y;
-    int ky_end = max_top_left_y < n - 1 ? ks_y : ks_y - 1;
+    int b_x_start_0 = g_x * bs_x;
+    int b_y_start_0 = g_y * bs_y;
+    int sq_end_x = (g_x + 1) * bs_x;
+    int sq_end_y = (g_y + 1) * bs_y;
 
-    for (int k_y = 0; k_y < ky_end; k_y++) {
-        // int kx_end = (bottom_left_y - bottom_left_x + k_y * ts_y - 1) / ts_x + 1;
-        int kx_end = ks_x;
+    int b_x_start_step = ts_x;
+    int b_y_start_step = ts_y;
 
-        for (int k_x = 0; k_x < kx_end; k_x++) {
-            int x = k_x * ts_x + t_x;
-            int y = k_y * ts_y + t_y;
+    int triangle_end = n - 1;
 
-            if (x + y < n - 1) {
+    for (int b_y_start = b_y_start_0; b_y_start + b_x_start_0 < triangle_end; b_y_start += b_y_start_step) {
+        for (int b_x_start = b_x_start_0; b_x_start + b_y_start < triangle_end; b_x_start += b_x_start_step) {
+            int x = b_x_start + b_x;
+            int y = b_y_start + b_y;
+
+            if (x + y < triangle_end) {
                 int galaxy0_index = x;
-                int galaxy1_index = n - y - 1;
+                int galaxy1_index = triangle_end - y;
 
                 float galaxy0a_x = galaxy_a.x[galaxy0_index];
                 float galaxy0a_y = galaxy_a.y[galaxy0_index];
