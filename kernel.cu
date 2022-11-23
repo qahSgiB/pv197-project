@@ -475,5 +475,5 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 float solveGPU(sGalaxy A, sGalaxy B, int n)
 {
     //TODO kernel call and data manipulation
-    return solve_gpu_param(A, B, n, 128, 64, 32, 32, false);
+    return solve_gpu_param(A, B, n, 64, 128, 256, 1, false);
 }
