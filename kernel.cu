@@ -221,7 +221,7 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n, fl
     // }
 
     // if (b_index < 512) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 512]; }; __syncthreads();
-    if (b_index < 256) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 256]; }; __syncthreads();
+    // if (b_index < 256) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 256]; }; __syncthreads();
     if (b_index < 128) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 128]; }; __syncthreads();
     if (b_index < 64) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 64]; }; __syncthreads();
 
@@ -250,7 +250,7 @@ __global__ void kernel_main_simple(sGalaxy galaxy_a, sGalaxy galaxy_b, int n, fl
         __syncthreads();
 
         // if (b_index < 512) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 512]; }; __syncthreads();
-        if (b_index < 256) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 256]; }; __syncthreads();
+        // if (b_index < 256) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 256]; }; __syncthreads();
         if (b_index < 128) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 128]; }; __syncthreads();
         if (b_index < 64) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 64]; }; __syncthreads();
 
