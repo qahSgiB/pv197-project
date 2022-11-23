@@ -300,10 +300,9 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
         shared_galaxy_b_i_x[b_x] = galaxy_b.x[x];
         shared_galaxy_b_i_y[b_x] = galaxy_b.y[x];
         shared_galaxy_b_i_z[b_x] = galaxy_b.z[x];
-        // __syncthreads();
 
         for (unsigned int start_y = g_y * block_size; start_y < n - 1; start_y += gs_y * block_size) {
-            int y = start_y + b_x;
+            unsigned int y = start_y + b_x;
 
             float galaxy_a_j_x = galaxy_a.x[y];
             float galaxy_a_j_y = galaxy_a.y[y];
@@ -313,8 +312,8 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
             float galaxy_b_j_z = galaxy_b.z[y];
             __syncthreads();
 
-            for (unsigned int k = 0; k < block_size; k++) {
-                if (start_x + k + y < n - 2) {
+            for (unsigned int k = 0; k < block_size && start_x + k + y < n - 2; k++) {
+                // if (start_x + k + y < n - 2) {
                     float dx_a = galaxy_a_j_x - shared_galaxy_a_i_x[k];
                     float dy_a = galaxy_a_j_y - shared_galaxy_a_i_y[k];
                     float dz_a = galaxy_a_j_z - shared_galaxy_a_i_z[k];
@@ -325,7 +324,7 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
 
                     float diff = sqrtf(dx_a * dx_a + dy_a * dy_a + dz_a * dz_a) - sqrtf(dx_b * dx_b + dy_b * dy_b + dz_b * dz_b);
                     k_total_diff += diff * diff;
-                }
+                // }
             }
 
             __syncthreads();
@@ -475,5 +474,5 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 float solveGPU(sGalaxy A, sGalaxy B, int n)
 {
     //TODO kernel call and data manipulation
-    return solve_gpu_param(A, B, n, 64, 128, 256, 1, false);
+    return solve_gpu_param(A, B, n, 32, 64, 128, 1, false);
 }
