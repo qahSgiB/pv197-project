@@ -268,14 +268,14 @@ template<unsigned int block_size>
 __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, int n, float* grid_sum)
 {
     //  ----------  setup  ----------
-    unsigned int gs_x = gridDim.x;
-    unsigned int gs_y = gridDim.y;
+    int gs_x = gridDim.x;
+    int gs_y = gridDim.y;
+    // int ts_x = gs_x * block_size;
     // unsigned int bs_x = blockDim.x;
-    // unsigned int ts_x = gs_x * bs_x;
 
-    unsigned int g_x = blockIdx.x;
-    unsigned int g_y = blockIdx.y;
-    unsigned int b_x = threadIdx.x;
+    int g_x = blockIdx.x;
+    int g_y = blockIdx.y;
+    int b_x = threadIdx.x;
     // unsigned int t_x = g_x * bs_x + b_x;
     // unsigned int t_y = g_y * bs_y + b_y;
 
@@ -290,9 +290,11 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
     __shared__ float shared_galaxy_b_i_y[block_size];
     __shared__ float shared_galaxy_b_i_z[block_size];
 
+    // int count = 0;
+
     //  ----------  computing  ----------
-    for (unsigned int start_x = g_x * block_size; start_x < n - 1; start_x += gs_x * block_size) {
-        unsigned int x = start_x + b_x;
+    for (int start_x = g_x * block_size; start_x < n - 1; start_x += gs_x * block_size) {
+        int x = start_x + b_x;
 
         shared_galaxy_a_i_x[b_x] = galaxy_a.x[x];
         shared_galaxy_a_i_y[b_x] = galaxy_a.y[x];
@@ -300,9 +302,10 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
         shared_galaxy_b_i_x[b_x] = galaxy_b.x[x];
         shared_galaxy_b_i_y[b_x] = galaxy_b.y[x];
         shared_galaxy_b_i_z[b_x] = galaxy_b.z[x];
+        __syncthreads();
 
-        for (unsigned int start_y = g_y * block_size; start_y < n - 1; start_y += gs_y * block_size) {
-            unsigned int y = start_y + b_x;
+        for (int start_y = g_y * block_size; start_y < start_x + block_size - 1; start_y += gs_y * block_size) {
+            int y = start_y + b_x;
 
             float galaxy_a_j_x = galaxy_a.x[y];
             float galaxy_a_j_y = galaxy_a.y[y];
@@ -310,10 +313,21 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
             float galaxy_b_j_x = galaxy_b.x[y];
             float galaxy_b_j_y = galaxy_b.y[y];
             float galaxy_b_j_z = galaxy_b.z[y];
-            __syncthreads();
 
-            for (unsigned int k = 0; k < block_size && start_x + k + y < n - 2; k++) {
-                // if (start_x + k + y < n - 2) {
+            // if (b_x == 0) {
+            //     count += 1;
+            // }
+
+            if (y >= n - 1) {
+                continue;
+            }
+
+            int k_max = min(block_size, n - 1 - start_x);
+            int k_min = max(0, y - start_x);
+            for (int k = k_min; k < k_max; k++) {
+                // if (y < n - 1) {
+                    // printf("(%d,%d),", y, start_x + k);
+
                     float dx_a = galaxy_a_j_x - shared_galaxy_a_i_x[k];
                     float dy_a = galaxy_a_j_y - shared_galaxy_a_i_y[k];
                     float dz_a = galaxy_a_j_z - shared_galaxy_a_i_z[k];
@@ -327,11 +341,16 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
                 // }
             }
 
-            __syncthreads();
         }
+        __syncthreads();
     }
 
+    // if (b_x == 0) {
+        // printf("[%d %d] [%d %d] count = %d\n", g_x, g_y, b_x, 0, count);
+    // }
+
     //  ----------  summing  ----------
+    // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, 0, k_total_diff);
     atomicAdd(&total_diff, k_total_diff / nf);
     // __shared__ float block_sum[block_size];
 
@@ -372,7 +391,7 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
     //     }
 
     //     if (b_x == 0) {
-    //         // atomicAdd(&total_diff, sumator3000 / nf);
+    //         atomicAdd(&total_diff, sumator3000 / nf);
     //         // grid_sum[g_index] = sumator3000 / nf;
     //         // __threadfence();
     //     }
