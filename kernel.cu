@@ -194,7 +194,8 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
     } else if (block_size_total == 64) {
         kernel_main_simple_testing<64><<<grid_size, block_size>>>(A, B, n);
     } else {
-        throw cuda_exception("unsopported block size");
+        std::cerr << "unsupported block size" << '\n';
+        return 0.0f;
     }
 
     cudaError_t error_code = cudaMemcpyFromSymbol(&diff, total_diff, sizeof(float));
