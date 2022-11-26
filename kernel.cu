@@ -23,6 +23,10 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
 
     //  ----------  computing  ----------
     for (int start_x = blockIdx.x * block_size; start_x < n - 1; start_x += gridDim.x * block_size) {
+        // if (start_x + threadIdx.x >= n - 1) {
+        //     continue;
+        // }
+
         shared_galaxy_a_i_x[threadIdx.x] = galaxy_a.x[start_x + threadIdx.x];
         shared_galaxy_a_i_y[threadIdx.x] = galaxy_a.y[start_x + threadIdx.x];
         shared_galaxy_a_i_z[threadIdx.x] = galaxy_a.z[start_x + threadIdx.x];
@@ -34,7 +38,7 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
         for (int start_y = n - 1 - blockIdx.y * block_size; start_y > start_x; start_y -= gridDim.y * block_size) {
             int rev_start_y = start_y - block_size + 1;
 
-            if (rev_start_y + ((int) threadIdx.x) < 0 || rev_start_y + threadIdx.x >= n) {
+            if (rev_start_y + ((int) threadIdx.x) <= 0 || rev_start_y + threadIdx.x >= n) {
                 continue;
             }
 
@@ -45,7 +49,7 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
             float galaxy_b_j_y = galaxy_b.y[rev_start_y + threadIdx.x];
             float galaxy_b_j_z = galaxy_b.z[rev_start_y + threadIdx.x];
 
-            int max_k = min(rev_start_y + threadIdx.x - start_x, block_size);
+            int max_k = min(rev_start_y + ((int) threadIdx.x) - start_x, ((int) block_size));
             for (int k = 0; k < max_k; k++) {
                 float dx_a = galaxy_a_j_x - shared_galaxy_a_i_x[k];
                 float dy_a = galaxy_a_j_y - shared_galaxy_a_i_y[k];
