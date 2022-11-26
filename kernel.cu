@@ -70,52 +70,60 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
     // if (b_x == 0 && count == 0) {
     //     printf("[%d %d] [%d %d] prrrrrrrrrrrrr count = %d\n", g_x, g_y, b_x, 0, count);
     // }
+    // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, 0, k_total_diff);
 
     //  ----------  summing  ----------
-    // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, 0, k_total_diff);
-    atomicAdd(&total_diff, k_total_diff / nf);
+    // if (threadIdx.x == 0) {
+        atomicAdd(&total_diff, k_total_diff / nf);
+    // }
+
     // __shared__ float block_sum[block_size];
 
-    // block_sum[b_x] = k_total_diff;
+    // block_sum[threadIdx.x] = k_total_diff;
     // __syncthreads();
     
     // float sumator3000 = k_total_diff;
 
     // if (block_size >= 1024) {
-    //     if (b_x < 512) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512];
+    //     if (threadIdx.x < 512) {
+    //         block_sum[threadIdx.x] = sumator3000 = sumator3000 + block_sum[threadIdx.x + 512];
     //     };
     //     __syncthreads();
     // }
     // if (block_size >= 512) {
-    //     if (b_x < 256) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256];
+    //     if (threadIdx.x < 256) {
+    //         block_sum[threadIdx.x] = sumator3000 = sumator3000 + block_sum[threadIdx.x + 256];
     //     };
     //     __syncthreads();
     // }
     // if (block_size >= 256) {
-    //     if (b_x < 128) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128];
+    //     if (threadIdx.x < 128) {
+    //         block_sum[threadIdx.x] = sumator3000 = sumator3000 + block_sum[threadIdx.x + 128];
     //     };
     //     __syncthreads();
     // }
     // if (block_size >= 128) {
-    //     if (b_x < 64) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64];
+    //     if (threadIdx.x < 64) {
+    //         block_sum[threadIdx.x] = sumator3000 = sumator3000 + block_sum[threadIdx.x + 64];
     //     };
     //     __syncthreads();
     // }
 
-    // if (b_x < 32) {
-    //     sumator3000 += block_sum[b_x + 32];
-    //     for (unsigned int offset = 16; offset > 0; offset >>= 1) {
-    //         sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
-    //     }
+    // if (threadIdx.x < 32) {
+    //     sumator3000 += block_sum[threadIdx.x + 32];
+    //     // for (unsigned int offset = 16; offset > 0; offset >>= 1) {
+    //     //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
+    //     // }
+    //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, 16);
+    //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, 8);
+    //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, 4);
+    //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, 2);
+    //     sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, 1);
 
-    //     if (b_x == 0) {
+    //     if (threadIdx.x == 0) {
     //         atomicAdd(&total_diff, sumator3000 / nf);
-            // grid_sum[g_index] = sumator3000 / nf;
-            // __threadfence();
+    //         // grid_sum[g_index] = sumator3000 / nf;
+    //         // __threadfence();
     //     }
     // }
 
@@ -209,5 +217,5 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 
 float solveGPU(sGalaxy A, sGalaxy B, int n)
 {
-    return solve_gpu_param(A, B, n, 32, 64, 128, 1, false);
+    return solve_gpu_param(A, B, n, 256, 32, 64, 1, false);
 }
