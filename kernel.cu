@@ -73,79 +73,79 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
 
     //  ----------  summing  ----------
     // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, 0, k_total_diff);
-    atomicAdd(&total_diff, k_total_diff / nf);
-    // __shared__ float block_sum[block_size];
+    // atomicAdd(&total_diff, k_total_diff / nf);
+    __shared__ float block_sum[block_size];
 
-    // block_sum[b_x] = k_total_diff;
-    // __syncthreads();
+    block_sum[b_x] = k_total_diff;
+    __syncthreads();
     
-    // float sumator3000 = k_total_diff;
+    float sumator3000 = k_total_diff;
 
-    // if (block_size >= 1024) {
-    //     if (b_x < 512) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512];
-    //     };
-    //     __syncthreads();
-    // }
-    // if (block_size >= 512) {
-    //     if (b_x < 256) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256];
-    //     };
-    //     __syncthreads();
-    // }
-    // if (block_size >= 256) {
-    //     if (b_x < 128) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128];
-    //     };
-    //     __syncthreads();
-    // }
-    // if (block_size >= 128) {
-    //     if (b_x < 64) {
-    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64];
-    //     };
-    //     __syncthreads();
-    // }
+    if (block_size >= 1024) {
+        if (b_x < 512) {
+            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512];
+        };
+        __syncthreads();
+    }
+    if (block_size >= 512) {
+        if (b_x < 256) {
+            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256];
+        };
+        __syncthreads();
+    }
+    if (block_size >= 256) {
+        if (b_x < 128) {
+            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128];
+        };
+        __syncthreads();
+    }
+    if (block_size >= 128) {
+        if (b_x < 64) {
+            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64];
+        };
+        __syncthreads();
+    }
 
-    // if (b_x < 32) {
-    //     sumator3000 += block_sum[b_x + 32];
-    //     for (unsigned int offset = 16; offset > 0; offset >>= 1) {
-    //         sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
-    //     }
+    if (b_x < 32) {
+        sumator3000 += block_sum[b_x + 32];
+        for (unsigned int offset = 16; offset > 0; offset >>= 1) {
+            sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
+        }
 
-    //     if (b_x == 0) {
-    //         atomicAdd(&total_diff, sumator3000 / nf);
-    //         // grid_sum[g_index] = sumator3000 / nf;
-    //         // __threadfence();
-    //     }
-    // }
+        if (b_x == 0) {
+            atomicAdd(&total_diff, sumator3000 / nf);
+            // grid_sum[g_index] = sumator3000 / nf;
+            // __threadfence();
+        }
+    }
 
-    // __syncthreads();
+    /*__syncthreads();
 
-    // if (g_index == 0) {
-    //     sumator3000 = 0.0f;
+    if (g_index == 0) {
+        sumator3000 = 0.0f;
 
-    //     unsigned int step = bs * 2;
-    //     for (int grid_sum_index = b_index; grid_sum_index < gs_x * gs_y; grid_sum_index += step) {
-    //         block_sum[b_index] = sumator3000 = sumator3000 + grid_sum[grid_sum_index] + grid_sum[grid_sum_index + bs];
-    //     }
-    //     __syncthreads();
+        unsigned int step = block_size * 2;
+        for (int grid_sum_index = b_x; grid_sum_index < gs_x * gs_y; grid_sum_index += step) {
+            block_sum[b_x] = sumator3000 = sumator3000 + grid_sum[grid_sum_index] + grid_sum[grid_sum_index + block_size];
+        }
+        __syncthreads();
 
-    //     if (b_index < 512) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 512]; }; __syncthreads();
-    //     if (b_index < 256) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 256]; }; __syncthreads();
-    //     if (b_index < 128) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 128]; }; __syncthreads();
-    //     if (b_index < 64) { block_sum[b_index] = sumator3000 = sumator3000 + block_sum[b_index + 64]; }; __syncthreads();
+        if (b_x < 512) { block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512]; }; __syncthreads();
+        if (b_x < 256) { block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256]; }; __syncthreads();
+        if (b_x < 128) { block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128]; }; __syncthreads();
+        if (bx < 64) { block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64]; }; __syncthreads();
 
-    //     if (b_index < 32) {
-    //         sumator3000 += block_sum[b_index + 32];
-    //         for (unsigned int offset = 16; offset > 0; offset >>= 1) {
-    //             sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
-    //         }
+        if (b_x < 32) {
+            sumator3000 += block_sum[b_x + 32];
+            for (unsigned int offset = 16; offset > 0; offset >>= 1) {
+                sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
+            }
 
-    //         if (b_index == 0) {
-    //             atomicAdd(&total_diff, sumator3000);
-    //         }
-    //     }
-    // }
+            if (b_x == 0) {
+                atomicAdd(&total_diff, sumator3000);
+            }
+        }
+    }*/
 
     // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, b_y, k_total_diff);
 }
@@ -179,13 +179,13 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
 
     size_t block_size_total = block_dim_x * block_dim_y;
     if (block_size_total == 1024) {
-        kernel_main_simple_testing<1024><<<grid_size, block_size>>>(A, B, n, grid_sum);
+        kernel_main_simple_testing<1024><<<grid_size, block_size>>>(A, B, n);
     } else if (block_size_total == 512) {
-        kernel_main_simple_testing<512><<<grid_size, block_size>>>(A, B, n, grid_sum);
+        kernel_main_simple_testing<512><<<grid_size, block_size>>>(A, B, n);
     } else if (block_size_total == 256) {
-        kernel_main_simple_testing<256><<<grid_size, block_size>>>(A, B, n, grid_sum);
+        kernel_main_simple_testing<256><<<grid_size, block_size>>>(A, B, n);
     } else if (block_size_total == 128) {
-        kernel_main_simple_testing<128><<<grid_size, block_size>>>(A, B, n, grid_sum);
+        kernel_main_simple_testing<128><<<grid_size, block_size>>>(A, B, n);
     } else if (block_size_total == 64) {
         kernel_main_simple_testing<64><<<grid_size, block_size>>>(A, B, n, grid_sum);
     } else if (block_size_total == 32) { // slower? <- bank conflicts in registers (slides.3.28)
