@@ -7,7 +7,7 @@ __device__ float total_diff = 0.0f;
 
 
 template<unsigned int block_size, bool force_fsqrt = false>
-__global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, int n, float* grid_sum)
+__global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, int n)
 {
     //  ----------  setup  ----------
     float nf = n;
@@ -73,51 +73,51 @@ __global__ void kernel_main_simple_testing(sGalaxy galaxy_a, sGalaxy galaxy_b, i
 
     //  ----------  summing  ----------
     // printf("[%d %d] [%d %d] k_total_diff = %f\n", g_x, g_y, b_x, 0, k_total_diff);
-    // atomicAdd(&total_diff, k_total_diff / nf);
-    __shared__ float block_sum[block_size];
+    atomicAdd(&total_diff, k_total_diff / nf);
+    // __shared__ float block_sum[block_size];
 
-    block_sum[b_x] = k_total_diff;
-    __syncthreads();
+    // block_sum[b_x] = k_total_diff;
+    // __syncthreads();
     
-    float sumator3000 = k_total_diff;
+    // float sumator3000 = k_total_diff;
 
-    if (block_size >= 1024) {
-        if (b_x < 512) {
-            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512];
-        };
-        __syncthreads();
-    }
-    if (block_size >= 512) {
-        if (b_x < 256) {
-            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256];
-        };
-        __syncthreads();
-    }
-    if (block_size >= 256) {
-        if (b_x < 128) {
-            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128];
-        };
-        __syncthreads();
-    }
-    if (block_size >= 128) {
-        if (b_x < 64) {
-            block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64];
-        };
-        __syncthreads();
-    }
+    // if (block_size >= 1024) {
+    //     if (b_x < 512) {
+    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 512];
+    //     };
+    //     __syncthreads();
+    // }
+    // if (block_size >= 512) {
+    //     if (b_x < 256) {
+    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 256];
+    //     };
+    //     __syncthreads();
+    // }
+    // if (block_size >= 256) {
+    //     if (b_x < 128) {
+    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 128];
+    //     };
+    //     __syncthreads();
+    // }
+    // if (block_size >= 128) {
+    //     if (b_x < 64) {
+    //         block_sum[b_x] = sumator3000 = sumator3000 + block_sum[b_x + 64];
+    //     };
+    //     __syncthreads();
+    // }
 
-    if (b_x < 32) {
-        sumator3000 += block_sum[b_x + 32];
-        for (unsigned int offset = 16; offset > 0; offset >>= 1) {
-            sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
-        }
+    // if (b_x < 32) {
+    //     sumator3000 += block_sum[b_x + 32];
+    //     for (unsigned int offset = 16; offset > 0; offset >>= 1) {
+    //         sumator3000 += __shfl_down_sync(0xffffffff, sumator3000, offset);
+    //     }
 
-        if (b_x == 0) {
-            atomicAdd(&total_diff, sumator3000 / nf);
+    //     if (b_x == 0) {
+    //         atomicAdd(&total_diff, sumator3000 / nf);
             // grid_sum[g_index] = sumator3000 / nf;
             // __threadfence();
-        }
-    }
+    //     }
+    // }
 
     /*__syncthreads();
 
@@ -168,14 +168,11 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
         std::cout << "total size : " << total_dim_x * k_x << " x " << total_dim_y * k_y << "\n";
     }
 
-    float* grid_sum = nullptr;
-
     float diff = 0.0f;
     cudaMemcpyToSymbol(total_diff, &diff, sizeof(float));
 
     dim3 grid_size(grid_dim_x, grid_dim_y);
     dim3 block_size(block_dim_x, block_dim_y);
-
 
     size_t block_size_total = block_dim_x * block_dim_y;
     if (block_size_total == 1024) {
@@ -187,9 +184,7 @@ float solve_gpu_param(sGalaxy A, sGalaxy B, int n, size_t grid_dim_x, size_t gri
     } else if (block_size_total == 128) {
         kernel_main_simple_testing<128><<<grid_size, block_size>>>(A, B, n);
     } else if (block_size_total == 64) {
-        kernel_main_simple_testing<64><<<grid_size, block_size>>>(A, B, n, grid_sum);
-    } else if (block_size_total == 32) { // slower? <- bank conflicts in registers (slides.3.28)
-        kernel_main_simple_testing<32><<<grid_size, block_size>>>(A, B, n, grid_sum);
+        kernel_main_simple_testing<64><<<grid_size, block_size>>>(A, B, n);
     } else {
         throw cuda_exception("unsopported block size");
     }
