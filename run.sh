@@ -57,7 +57,7 @@ if [ $build = 1 ]; then
 	if [ $use_original_framework = 1 ]; then
 		nvcc -O3 -use_fast_math -o "$bin_path" "framework.cu"
 	else
-		nvcc -std="c++$cpp_std" -D "FSTD=$cpp_std" -I "./a/$cppStd" -O3 -use_fast_math -o "$bin_path" "framework_plus.cu"
+		nvcc -std="c++$cpp_std" -D "FSTD=$cpp_std" -I "./a/$cpp_std" -O3 -use_fast_math -o "$bin_path" "framework_plus.cu"
 	fi
 fi
 
