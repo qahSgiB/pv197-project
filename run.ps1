@@ -24,7 +24,7 @@ if ($build -or $all) {
     if ($useOriginalFramework) {
         nvcc -O3 -use_fast_math -o $exePath "framework.cu"
     } else {
-        nvcc -std="c++$cppStd" -D "FSTD=$cppStd" -O3 -use_fast_math -o $exePath "framework_plus.cu"
+        nvcc -std="c++$cppStd" -D "FSTD=$cppStd" -I "./a/$cppStd" -O3 -use_fast_math -o $exePath "framework_plus.cu"
     }
 }
 

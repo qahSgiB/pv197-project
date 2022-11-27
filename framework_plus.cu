@@ -13,11 +13,7 @@
 #define FSTD 14
 #endif
 
-#if FSTD == 17
-#include "a/17/argparser.cpp"
-#elif FSTD == 14
-#include "a/14/argparser.cpp"
-#endif
+#include "argparser.cpp"
 
 
 
