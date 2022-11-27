@@ -7,24 +7,24 @@ param (
 )
 
 $cppStd = $null
-$frameworkMainFile = "framework.cu"
+$useOriginalFramework = $true;
 
 if ($frameworkVersion -eq "14") {
-    $frameworkMainFile = "framework_14.cu"
-    $cppStd = "c++14"
+    $cppStd = "14"
+    $useOriginalFramework = $false;
 } elseif ($frameworkVersion -eq "17") {
-    $frameworkMainFile = "framework_17.cu"
-    $cppStd = "c++17"
+    $cppStd = "17"
+    $useOriginalFramework = $false;
 }
 
 $buildDir = "build"
 $exePath = Join-Path $buildDir "framework.exe"
 
 if ($build -or $all) {
-    if ($null -eq $cppStd) {
-        nvcc -O3 -use_fast_math -o $exePath $frameworkMainFile
+    if ($useOriginalFramework) {
+        nvcc -O3 -use_fast_math -o $exePath "framework.cu"
     } else {
-        nvcc -std="$cppStd" -O3 -use_fast_math -o $exePath $frameworkMainFile
+        nvcc -std="c++$cppStd" -D "FSTD=$cppStd" -O3 -use_fast_math -o $exePath "framework_plus.cu"
     }
 }
 

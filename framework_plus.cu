@@ -4,29 +4,21 @@
 #include <cmath>
 
 #include <vector>
-#include <string_view>
-#include <charconv>
-#include <stdexcept>
-#include <system_error>
-#include <optional>
-#include <memory>
-#include <limits>
-#include <algorithm>
+#include <string>
+#include <exception>
 
 #include <cuda_runtime.h>
 
-#include "argparser_17.cpp"
+#if (!defined(FSTD))
+#define FSTD 14
+#endif
 
+#if FSTD == 17
+#include "a/17/argparser.cpp"
+#elif FSTD == 14
+#include "a/14/argparser.cpp"
+#endif
 
-
-
-// galaxy is stored as cartesian coordinates of its stars, each dimmension is in separate array
-struct sGalaxy
-{
-    float* x;
-    float* y;
-    float* z;
-};
 
 
 class cuda_exception : public std::exception
@@ -44,27 +36,41 @@ public:
 
 
 
+struct sGalaxy
+{
+    float* x;
+    float* y;
+    float* z;
+};
+
+
+
 #include "kernel.cu"
 #include "kernel_CPU.C"
 
 
 
-void generateGalaxies(sGalaxy A, sGalaxy B, int n) {
+void generateGalaxies(sGalaxy A, sGalaxy B, int n, bool test = false) {
     for (int i = 0; i < n; i++) {
         A.x[i] = 1000.0f * (float) rand() / (float) RAND_MAX;
         A.y[i] = 1000.0f * (float) rand() / (float) RAND_MAX;
         A.z[i] = 1000.0f * (float) rand() / (float) RAND_MAX;
         
-        float mult = (float) rand() / (float) RAND_MAX < 0.01f ? 10.0f : 1.0f;
-        B.x[i] = A.x[i] + mult * (float) rand() / (float) RAND_MAX;
-        B.y[i] = A.y[i] + mult * (float) rand() / (float) RAND_MAX;
-        B.z[i] = A.z[i] + mult * (float) rand() / (float) RAND_MAX;
-        // B.x[i] = A.x[i];
-        // B.y[i] = A.y[i];
-        // B.z[i] = A.z[i];
+        if (test) {
+            B.x[i] = A.x[i];
+            B.y[i] = A.y[i];
+            B.z[i] = A.z[i];
+        } else {
+            float mult = (float) rand() / (float) RAND_MAX < 0.01f ? 10.0f : 1.0f;
+            B.x[i] = A.x[i] + mult * (float) rand() / (float) RAND_MAX;
+            B.y[i] = A.y[i] + mult * (float) rand() / (float) RAND_MAX;
+            B.z[i] = A.z[i] + mult * (float) rand() / (float) RAND_MAX;
+        }
     }
 
-    // B.x[n - 1] += 1000.0f;
+    if (test) {
+        B.x[n - 1] += 1000.0f;
+    }
 }
 
 
@@ -74,7 +80,7 @@ enum class gpu_output_type : size_t { DISABLE, ONCE, ENABLE };
 
 int main_exc(int argc, char** argv)
 {
-    std::cout << "using framework 17\n\n";
+    std::cout << "FSTD : " << FSTD << "\n\n";
 
     // params
     int device = 0;

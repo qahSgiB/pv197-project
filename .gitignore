@@ -1,6 +1,9 @@
 ## vscode
 .vscode/
 
+## python
+.mypy_cache/
+
 ## project
 build/
 /framework
