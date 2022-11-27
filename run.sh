@@ -38,14 +38,14 @@ done
 # [todo] check if some arguments remains -> error
 
 cpp_std=""
-use_original_framework = 1
+use_original_framework=1
 
 if [ "$framework_version" = "14" ]; then
 	cpp_std="14"
-	use_original_framework = 0
+	use_original_framework=0
 elif [ "$framework_version" = "17" ]; then
 	cpp_std="17"
-	use_original_framework = 0
+	use_original_framework=0
 fi
 
 build_dir="build"
