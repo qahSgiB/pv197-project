@@ -4,6 +4,9 @@
 ## python
 .mypy_cache/
 
+## ktt
+ktt/
+
 ## project
 build/
 /framework
