@@ -38,14 +38,14 @@ done
 # [todo] check if some arguments remains -> error
 
 cpp_std=""
-framework_main_file="framework.cu"
+use_original_framework = 1
 
 if [ "$framework_version" = "14" ]; then
-	cpp_std="c++14"
-	framework_main_file="framework_14.cu"
+	cpp_std="14"
+	use_original_framework = 0
 elif [ "$framework_version" = "17" ]; then
-	cpp_std="c++17"
-	framework_main_file="framework_17.cu"
+	cpp_std="17"
+	use_original_framework = 0
 fi
 
 build_dir="build"
@@ -54,10 +54,10 @@ bin_path="${build_dir%%/}/framework"
 mkdir -p "$build_dir"
 
 if [ $build = 1 ]; then
-	if [ -z "$cpp_std" ]; then
-		nvcc -O3 -use_fast_math -o "$bin_path" "$framework_main_file"
+	if [ $use_original_framework = 1 ]; then
+		nvcc -O3 -use_fast_math -o "$bin_path" "framework.cu"
 	else
-		nvcc -std="$cpp_std" -O3 -use_fast_math -o "$bin_path" "$framework_main_file"
+		nvcc -std="c++$cpp_std" -D "FSTD=$cpp_std" -O3 -use_fast_math -o "$bin_path" "framework_plus.cu"
 	fi
 fi
 
