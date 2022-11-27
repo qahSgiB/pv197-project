@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <algorithm>
 #include <cstring>
 
 #include "string_util.cpp"

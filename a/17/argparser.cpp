@@ -5,6 +5,7 @@
 #include <string_view>
 #include <stdexcept>
 #include <optional>
+#include <algorithm>
 
 #include "string_util.cpp"
 
